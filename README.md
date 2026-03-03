@@ -494,8 +494,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/geo_fence_utils/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/geo_fence_utils/discussions)
+- **Issues**: [GitHub Issues](https://github.com/MEET-1008/geo_fence_utils/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/MEET-1008/geo_fence_utils/discussions)
 
 ---
 

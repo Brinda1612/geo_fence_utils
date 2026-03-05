@@ -1,4 +1,5 @@
 import '../models/geo_point.dart';
+import '../markers/models/marker_config.dart';
 import 'package:flutter/painting.dart';
 
 /// Callback type for when a geofence is tapped.
@@ -39,13 +40,20 @@ abstract class GeoGeofenceBase {
   /// Additional metadata associated with this geofence.
   final Map<String, dynamic> metadata;
 
+  /// Optional marker configuration for the center of the geofence.
+  final MarkerConfig? centerMarker;
+
   /// Creates a new [GeoGeofenceBase] with the given properties.
   const GeoGeofenceBase({
     required this.id,
     this.color = const Color(0x4D2196F3),
     this.isInteractive = true,
     this.metadata = const {},
+    this.centerMarker,
   });
+
+  /// The position where the center marker should be placed.
+  GeoPoint get markerPosition;
 
   /// Validates this geofence's configuration.
   ///
@@ -62,6 +70,7 @@ abstract class GeoGeofenceBase {
       'color': color.value,
       'isInteractive': isInteractive,
       'metadata': metadata,
+      'centerMarker': centerMarker?.toMap(),
     };
   }
 }

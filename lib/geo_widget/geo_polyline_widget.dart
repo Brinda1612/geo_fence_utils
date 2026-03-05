@@ -1,4 +1,5 @@
 import 'package:flutter/painting.dart';
+import '../markers/models/marker_config.dart';
 import '../models/geo_point.dart';
 import 'geo_geofence_base.dart';
 
@@ -52,6 +53,12 @@ class GeoPolylineWidget extends GeoGeofenceBase {
   /// Border/stroke color of the polyline.
   final Color strokeColor;
 
+  /// Optional marker to display at the start of the polyline.
+  final MarkerConfig? startMarker;
+
+  /// Optional marker to display at the end of the polyline.
+  final MarkerConfig? endMarker;
+
   /// Creates a new [GeoPolylineWidget] with the given properties.
   const GeoPolylineWidget({
     required super.id,
@@ -62,14 +69,29 @@ class GeoPolylineWidget extends GeoGeofenceBase {
     this.dashPattern,
     super.isInteractive,
     super.metadata,
+    super.centerMarker,
+    this.startMarker,
+    this.endMarker,
     this.strokeColor = const Color(0xFF2196F3),
   }) : super(color: const Color(0xFF2196F3));
+
+  @override
+  GeoPoint get markerPosition {
+    if (points.isEmpty) {
+      throw StateError('Cannot compute marker position of empty polyline');
+    }
+    // Return the middle point of the polyline
+    return points[points.length ~/ 2];
+  }
 
   /// Creates a preset "route" polyline with blue styling.
   factory GeoPolylineWidget.route({
     required List<GeoPoint> points,
     String? id,
     double width = 5.0,
+    MarkerConfig? centerMarker,
+    MarkerConfig? startMarker,
+    MarkerConfig? endMarker,
   }) {
     return GeoPolylineWidget(
       id: id ?? 'route_${points.length}_points',
@@ -78,6 +100,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
       strokeColor: const Color(0xFF2196F3), // Blue
       capStyle: PolylineCap.round,
       isGeodesic: true,
+      centerMarker: centerMarker,
+      startMarker: startMarker,
+      endMarker: endMarker,
     );
   }
 
@@ -86,6 +111,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
     required List<GeoPoint> points,
     String? id,
     double width = 2.0,
+    MarkerConfig? centerMarker,
+    MarkerConfig? startMarker,
+    MarkerConfig? endMarker,
   }) {
     return GeoPolylineWidget(
       id: id ?? 'boundary_${points.length}_points',
@@ -95,6 +123,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
       capStyle: PolylineCap.round,
       isGeodesic: false,
       dashPattern: const [10, 10], // Dashed line
+      centerMarker: centerMarker,
+      startMarker: startMarker,
+      endMarker: endMarker,
     );
   }
 
@@ -103,6 +134,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
     required List<GeoPoint> points,
     String? id,
     double width = 6.0,
+    MarkerConfig? centerMarker,
+    MarkerConfig? startMarker,
+    MarkerConfig? endMarker,
   }) {
     return GeoPolylineWidget(
       id: id ?? 'nav_path_${points.length}_points',
@@ -111,6 +145,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
       strokeColor: const Color(0xFF4CAF50), // Green
       capStyle: PolylineCap.round,
       isGeodesic: true,
+      centerMarker: centerMarker,
+      startMarker: startMarker,
+      endMarker: endMarker,
     );
   }
 
@@ -119,6 +156,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
     required List<GeoPoint> points,
     String? id,
     double width = 4.0,
+    MarkerConfig? centerMarker,
+    MarkerConfig? startMarker,
+    MarkerConfig? endMarker,
   }) {
     return GeoPolylineWidget(
       id: id ?? 'corridor_${points.length}_points',
@@ -127,6 +167,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
       strokeColor: const Color(0xFFFF9800), // Orange
       capStyle: PolylineCap.round,
       isGeodesic: true,
+      centerMarker: centerMarker,
+      startMarker: startMarker,
+      endMarker: endMarker,
     );
   }
 
@@ -135,6 +178,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
     required List<GeoPoint> points,
     String? id,
     double width = 3.0,
+    MarkerConfig? centerMarker,
+    MarkerConfig? startMarker,
+    MarkerConfig? endMarker,
   }) {
     return GeoPolylineWidget(
       id: id ?? 'flight_path_${points.length}_points',
@@ -144,6 +190,9 @@ class GeoPolylineWidget extends GeoGeofenceBase {
       capStyle: PolylineCap.round,
       isGeodesic: true,
       dashPattern: const [15, 10], // Long dashes
+      centerMarker: centerMarker,
+      startMarker: startMarker,
+      endMarker: endMarker,
     );
   }
 

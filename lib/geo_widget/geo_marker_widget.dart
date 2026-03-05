@@ -144,6 +144,8 @@ class GeoMarkerWidget extends GeoGeofenceBase {
     Color color = const Color(0xFF2196F3),
     double markerSize = 40.0,
     String? label,
+    double anchorX = 0.5,
+    double anchorY = 1.0,
     Map<String, dynamic> metadata = const {},
   }) {
     return GeoMarkerWidget.withConfig(
@@ -155,6 +157,8 @@ class GeoMarkerWidget extends GeoGeofenceBase {
         size: markerSize,
         svgPath: svgPath,
         label: label,
+        anchorX: anchorX,
+        anchorY: anchorY,
       ),
       metadata: {'type': 'svgCustom', ...metadata},
     );
@@ -177,6 +181,8 @@ class GeoMarkerWidget extends GeoGeofenceBase {
     String? label,
     Color borderColor = Colors.transparent,
     double borderWidth = 0.0,
+    double anchorX = 0.5,
+    double anchorY = 1.0,
     Map<String, dynamic> metadata = const {},
   }) {
     return GeoMarkerWidget.withConfig(
@@ -190,10 +196,15 @@ class GeoMarkerWidget extends GeoGeofenceBase {
         label: label,
         borderColor: borderColor,
         borderWidth: borderWidth,
+        anchorX: anchorX,
+        anchorY: anchorY,
       ),
       metadata: {'type': 'pngAsset', 'assetPath': pngAssetPath, ...metadata},
     );
   }
+
+  @override
+  GeoPoint get markerPosition => position;
 
   @override
   void validate() {

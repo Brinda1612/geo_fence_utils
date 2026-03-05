@@ -50,6 +50,12 @@ class MarkerConfig {
   /// Label background color (null for transparent)
   final Color? labelBackgroundColor;
 
+  /// Horizontal anchor (0.0=left, 0.5=center, 1.0=right)
+  final double anchorX;
+
+  /// Vertical anchor (0.0=top, 0.5=center, 1.0=bottom)
+  final double anchorY;
+
   const MarkerConfig({
     required this.type,
     this.color = Colors.blue,
@@ -66,6 +72,8 @@ class MarkerConfig {
     this.labelColor = Colors.white,
     this.labelFontSize = 12.0,
     this.labelBackgroundColor,
+    this.anchorX = 0.5,
+    this.anchorY = 1.0,
   });
 
   /// Creates a copy with modified fields
@@ -85,6 +93,8 @@ class MarkerConfig {
     Color? labelColor,
     double? labelFontSize,
     Color? labelBackgroundColor,
+    double? anchorX,
+    double? anchorY,
   }) {
     return MarkerConfig(
       type: type ?? this.type,
@@ -102,6 +112,8 @@ class MarkerConfig {
       labelColor: labelColor ?? this.labelColor,
       labelFontSize: labelFontSize ?? this.labelFontSize,
       labelBackgroundColor: labelBackgroundColor ?? this.labelBackgroundColor,
+      anchorX: anchorX ?? this.anchorX,
+      anchorY: anchorY ?? this.anchorY,
     );
   }
 
@@ -126,7 +138,7 @@ class MarkerConfig {
 
   /// Generates a unique cache key for this configuration
   String get cacheKey {
-    return '${type.name}_${color.value}_${size}_$enableShadow${svgPath?.hashCode ?? 0}${pngAssetPath?.hashCode ?? 0}_$rotation';
+    return '${type.name}_${color.value}_${size}_$enableShadow${svgPath?.hashCode ?? 0}${pngAssetPath?.hashCode ?? 0}_${rotation}_${anchorX}_${anchorY}_$opacity';
   }
 
   /// Converts the configuration to a map for serialization
@@ -147,6 +159,8 @@ class MarkerConfig {
       'labelColor': labelColor.value,
       'labelFontSize': labelFontSize,
       'labelBackgroundColor': labelBackgroundColor?.value,
+      'anchorX': anchorX,
+      'anchorY': anchorY,
     };
   }
 
@@ -163,6 +177,8 @@ class MarkerConfig {
           borderColor.value == other.borderColor.value &&
           borderWidth == other.borderWidth &&
           rotation == other.rotation &&
+          anchorX == other.anchorX &&
+          anchorY == other.anchorY &&
           opacity == other.opacity;
 
   @override
@@ -176,5 +192,7 @@ class MarkerConfig {
       borderColor.value.hashCode ^
       borderWidth.hashCode ^
       rotation.hashCode ^
+      anchorX.hashCode ^
+      anchorY.hashCode ^
       opacity.hashCode;
 }

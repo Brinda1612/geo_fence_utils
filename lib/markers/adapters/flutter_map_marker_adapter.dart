@@ -155,36 +155,27 @@ class FlutterMapMarkerAdapter extends BaseMarkerAdapter {
     required MarkerConfig config,
     VoidCallback? onTap,
   }) {
-    // Calculate proper alignment based on marker type
-    // Pin markers should be bottom-center aligned (point at bottom)
-    // Circle/dot markers should be center aligned
-    final alignment = _getMarkerAlignment(config.type);
+    // Calculate proper alignment based on marker config
+    final alignment = _getMarkerAlignment(config);
 
     return Marker(
       point: LatLng(position.latitude, position.longitude),
       width: config.size,
       height: config.size * config.type.aspectRatio,
-      child: Align(
-        alignment: alignment,
-        child: SizedBox(
-          width: config.size,
-          height: config.size * config.type.aspectRatio,
-          child: buildCompleteMarker(
-            config: config,
-            onTap: onTap,
-          ),
-        ),
+      alignment: alignment,
+      child: buildCompleteMarker(
+        config: config,
+        onTap: onTap,
       ),
     );
   }
 
   /// Get the proper alignment for the marker based on its type
-  Alignment _getMarkerAlignment(MarkerType type) {
-    switch (type) {
-      case MarkerType.svgCustom:
-      case MarkerType.pngAsset:
-        // Both SVG and PNG markers are center aligned
-        return Alignment.center;
-    }
+  Alignment _getMarkerAlignment(MarkerConfig config) {
+    // Convert 0.0-1.0 range to -1.0 to 1.0 range for Alignment
+    return Alignment(
+      (config.anchorX * 2) - 1,
+      (config.anchorY * 2) - 1,
+    );
   }
 }

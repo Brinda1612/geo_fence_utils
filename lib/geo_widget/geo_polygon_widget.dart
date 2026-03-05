@@ -1,4 +1,5 @@
 import 'package:flutter/painting.dart';
+import '../markers/models/marker_config.dart';
 import '../models/geo_point.dart';
 import 'geo_geofence_base.dart';
 
@@ -42,9 +43,13 @@ class GeoPolygonWidget extends GeoGeofenceBase {
     super.color,
     this.strokeWidth = 2.0,
     this.borderColor = const Color(0xFF2196F3),
+    super.centerMarker,
     super.isInteractive,
     super.metadata,
   });
+
+  @override
+  GeoPoint get markerPosition => centroid;
 
   /// Creates a rectangular polygon from bounding coordinates.
   factory GeoPolygonWidget.fromBounds({
@@ -53,6 +58,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
     required double east,
     required double west,
     String? id,
+    MarkerConfig? centerMarker,
   }) {
     return GeoPolygonWidget(
       id: id ?? 'polygon_bounds_${north}_${south}_${east}_${west}',
@@ -62,6 +68,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
         GeoPoint(latitude: south, longitude: east),
         GeoPoint(latitude: south, longitude: west),
       ],
+      centerMarker: centerMarker,
     );
   }
 
@@ -69,6 +76,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
   factory GeoPolygonWidget.fromCoordinates({
     required List<List<double>> coordinates,
     String? id,
+    MarkerConfig? centerMarker,
   }) {
     final points = coordinates
         .map((coord) => GeoPoint(latitude: coord[0], longitude: coord[1]))
@@ -77,6 +85,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
     return GeoPolygonWidget(
       id: id ?? 'polygon_coords_${points.length}',
       points: points,
+      centerMarker: centerMarker,
     );
   }
 
@@ -85,6 +94,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
     required List<GeoPoint> points,
     String? id,
     double strokeWidth = 3.0,
+    MarkerConfig? centerMarker,
   }) {
     return GeoPolygonWidget(
       id: id ?? 'restricted_${points.length}_vertices',
@@ -92,6 +102,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
       color: const Color(0x4D000000), // Black with 30% opacity
       borderColor: const Color(0xFFFF0000), // Red border
       strokeWidth: strokeWidth,
+      centerMarker: centerMarker,
     );
   }
 
@@ -100,6 +111,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
     required List<GeoPoint> points,
     String? id,
     double strokeWidth = 2.5,
+    MarkerConfig? centerMarker,
   }) {
     return GeoPolygonWidget(
       id: id ?? 'perimeter_${points.length}_vertices',
@@ -107,6 +119,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
       color: const Color(0x1A2196F3), // Blue with 10% opacity
       borderColor: const Color(0xFF2196F3), // Solid blue
       strokeWidth: strokeWidth,
+      centerMarker: centerMarker,
     );
   }
 
@@ -115,6 +128,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
     required List<GeoPoint> points,
     String? id,
     double strokeWidth = 3.0,
+    MarkerConfig? centerMarker,
   }) {
     return GeoPolygonWidget(
       id: id ?? 'secure_${points.length}_vertices',
@@ -122,6 +136,7 @@ class GeoPolygonWidget extends GeoGeofenceBase {
       color: const Color(0x334CAF50), // Green with 20% opacity
       borderColor: const Color(0xFF4CAF50), // Solid green
       strokeWidth: strokeWidth,
+      centerMarker: centerMarker,
     );
   }
 

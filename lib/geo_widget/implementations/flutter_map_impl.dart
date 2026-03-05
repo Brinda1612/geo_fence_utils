@@ -434,13 +434,13 @@ class _FlutterMapImplState extends State<FlutterMapImpl> {
       ));
     }
 
-    // Add center markers from circles
+    // Add center markers from all geofences
     for (final geofence in widget.geofences) {
-      if (geofence is GeoCircleWidget && geofence.centerMarker != null) {
-        final circleCenterMarkerId = '${geofence.id}_center_marker';
+      if (geofence.centerMarker != null) {
+        final centerMarkerId = '${geofence.id}_center_marker';
         final marker = GeoMarkerWidget(
-          id: circleCenterMarkerId,
-          position: geofence.center,
+          id: centerMarkerId,
+          position: geofence.markerPosition,
           config: geofence.centerMarker!,
           isInteractive: geofence.isInteractive,
         );
@@ -450,27 +450,76 @@ class _FlutterMapImplState extends State<FlutterMapImpl> {
           position: marker.position,
           config: marker.effectiveConfig,
           onTap: geofence.isInteractive
-              ? () => _handleCenterMarkerTap(geofence.id, circleCenterMarkerId)
+              ? () => _handleGeofenceMarkerTap(geofence.id, centerMarkerId)
               : null,
         ));
+      }
+
+      // Add start and end markers for polylines
+      if (geofence is GeoPolylineWidget) {
+        if (geofence.startMarker != null && geofence.points.isNotEmpty) {
+          final startMarkerId = '${geofence.id}_start_marker';
+          final marker = GeoMarkerWidget(
+            id: startMarkerId,
+            position: geofence.points.first,
+            config: geofence.startMarker!,
+            isInteractive: geofence.isInteractive,
+          );
+
+          markers.add(adapter.createMapMarker(
+            id: marker.id,
+            position: marker.position,
+            config: marker.effectiveConfig,
+            onTap: geofence.isInteractive
+                ? () => _handleGeofenceMarkerTap(geofence.id, startMarkerId)
+                : null,
+          ));
+        }
+
+        if (geofence.endMarker != null && geofence.points.length >= 2) {
+          final endMarkerId = '${geofence.id}_end_marker';
+          final marker = GeoMarkerWidget(
+            id: endMarkerId,
+            position: geofence.points.last,
+            config: geofence.endMarker!,
+            isInteractive: geofence.isInteractive,
+          );
+
+          markers.add(adapter.createMapMarker(
+            id: marker.id,
+            position: marker.position,
+            config: marker.effectiveConfig,
+            onTap: geofence.isInteractive
+                ? () => _handleGeofenceMarkerTap(geofence.id, endMarkerId)
+                : null,
+          ));
+        }
       }
     }
 
     return markers;
   }
 
-  /// Handle center marker tap
-  void _handleCenterMarkerTap(String circleId, String markerId) {
+  /// Handle marker tap associated with a geofence
+  void _handleGeofenceMarkerTap(String geofenceId, String markerId) {
     setState(() {
       _selectedMarkerId = markerId;
-      // Find the circle to get its center marker config
-      final circle = widget.geofences.firstWhere(
-        (g) => g.id == circleId,
-        orElse: () => throw StateError('Circle not found: $circleId'),
+      final geofence = widget.geofences.firstWhere(
+        (g) => g.id == geofenceId,
+        orElse: () => throw StateError('Geofence not found: $geofenceId'),
       );
-      if (circle is GeoCircleWidget && circle.centerMarker != null) {
-        _selectedMarkerPosition = circle.center;
-        _selectedMarkerConfig = circle.centerMarker;
+
+      if (markerId == '${geofenceId}_center_marker') {
+        _selectedMarkerPosition = geofence.markerPosition;
+        _selectedMarkerConfig = geofence.centerMarker;
+      } else if (geofence is GeoPolylineWidget) {
+        if (markerId == '${geofenceId}_start_marker') {
+          _selectedMarkerPosition = geofence.points.first;
+          _selectedMarkerConfig = geofence.startMarker;
+        } else if (markerId == '${geofenceId}_end_marker') {
+          _selectedMarkerPosition = geofence.points.last;
+          _selectedMarkerConfig = geofence.endMarker;
+        }
       }
     });
 

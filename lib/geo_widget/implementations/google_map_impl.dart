@@ -118,6 +118,7 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
   final Set<Polyline> _polylines = {};
   final Set<Marker> _markers = {};
   bool _isMarkersLoaded = false;
+  int _loadingSequence = 0;
 
   static final _adapter = GoogleMapMarkerAdapter();
 
@@ -136,6 +137,7 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.geofences != widget.geofences) {
       _buildOverlays();
+      _loadMarkersAsync();
     }
     if (oldWidget.markers != widget.markers) {
       _loadMarkersAsync();
@@ -179,7 +181,20 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
   }
 
   Future<void> _loadMarkersAsync() async {
-    _markers.clear();
+    final currentSequence = ++_loadingSequence;
+    
+    // Immediately clear markers if geofences empty to avoid ghost markers
+    if (widget.geofences.isEmpty && widget.markers.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _markers.clear();
+          _isMarkersLoaded = true;
+        });
+      }
+      return;
+    }
+
+    final newMarkers = <Marker>{};
     _isMarkersLoaded = false;
 
     // Load regular markers
@@ -187,7 +202,7 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
       final config = marker.effectiveConfig;
       final bitmapDescriptor = await _adapter.buildBitmapDescriptor(config);
 
-      _markers.add(Marker(
+      newMarkers.add(Marker(
         markerId: MarkerId(marker.id),
         position: marker.position.toGoogleLatLng(),
         icon: bitmapDescriptor,
@@ -196,38 +211,90 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
             : null,
         alpha: config.opacity,
         zIndex: config.zIndex.toDouble(),
+        anchor: Offset(config.anchorX, config.anchorY),
         infoWindow: config.label != null
             ? InfoWindow(title: config.label)
             : InfoWindow.noText,
       ));
     }
 
-    // Load center markers from circles
+    // Load center markers from all geofences
     for (final geofence in widget.geofences) {
-      if (geofence is GeoCircleWidget && geofence.centerMarker != null) {
-        final circleCenterMarkerId = '${geofence.id}_center_marker';
+      if (geofence.centerMarker != null) {
+        final centerMarkerId = '${geofence.id}_center_marker';
         final config = geofence.centerMarker!;
         final bitmapDescriptor = await _adapter.buildBitmapDescriptor(config);
 
-        _markers.add(Marker(
-          markerId: MarkerId(circleCenterMarkerId),
-          position: geofence.center.toGoogleLatLng(),
+        newMarkers.add(Marker(
+          markerId: MarkerId(centerMarkerId),
+          position: geofence.markerPosition.toGoogleLatLng(),
           icon: bitmapDescriptor,
           onTap: geofence.isInteractive && widget.onMarkerTap != null
-              ? () => widget.onMarkerTap!(circleCenterMarkerId)
+              ? () => widget.onMarkerTap!(centerMarkerId)
               : null,
           alpha: config.opacity,
           zIndex: config.zIndex.toDouble(),
+          anchor: Offset(config.anchorX, config.anchorY),
           infoWindow: config.label != null
               ? InfoWindow(title: config.label)
               : InfoWindow.noText,
         ));
       }
+
+      // Load start and end markers for polylines
+      if (geofence is GeoPolylineWidget) {
+        if (geofence.startMarker != null && geofence.points.isNotEmpty) {
+          final startMarkerId = '${geofence.id}_start_marker';
+          final config = geofence.startMarker!;
+          final bitmapDescriptor = await _adapter.buildBitmapDescriptor(config);
+
+          newMarkers.add(Marker(
+            markerId: MarkerId(startMarkerId),
+            position: geofence.points.first.toGoogleLatLng(),
+            icon: bitmapDescriptor,
+            onTap: geofence.isInteractive && widget.onMarkerTap != null
+                ? () => widget.onMarkerTap!(startMarkerId)
+                : null,
+            alpha: config.opacity,
+            zIndex: config.zIndex.toDouble() + 1,
+            anchor: Offset(config.anchorX, config.anchorY),
+            infoWindow: config.label != null
+                ? InfoWindow(title: config.label)
+                : InfoWindow.noText,
+          ));
+        }
+
+        if (geofence.endMarker != null && geofence.points.length >= 2) {
+          final endMarkerId = '${geofence.id}_end_marker';
+          final config = geofence.endMarker!;
+          final bitmapDescriptor = await _adapter.buildBitmapDescriptor(config);
+
+          newMarkers.add(Marker(
+            markerId: MarkerId(endMarkerId),
+            position: geofence.points.last.toGoogleLatLng(),
+            icon: bitmapDescriptor,
+            onTap: geofence.isInteractive && widget.onMarkerTap != null
+                ? () => widget.onMarkerTap!(endMarkerId)
+                : null,
+            alpha: config.opacity,
+            zIndex: config.zIndex.toDouble() + 1,
+            anchor: Offset(config.anchorX, config.anchorY),
+            infoWindow: config.label != null
+                ? InfoWindow(title: config.label)
+                : InfoWindow.noText,
+          ));
+        }
+      }
     }
 
-    setState(() {
-      _isMarkersLoaded = true;
-    });
+    // Only update if this is still the latest request
+    if (mounted && currentSequence == _loadingSequence) {
+      setState(() {
+        _markers.clear();
+        _markers.addAll(newMarkers);
+        _isMarkersLoaded = true;
+      });
+    }
   }
 
   void _handleMapTap(LatLng latLng) {

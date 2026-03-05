@@ -139,11 +139,13 @@ class GoogleMapMarkerAdapter extends BaseMarkerAdapter {
 
       // Convert to bitmap
       final picture = recorder.endRecording();
-      // Use a fixed devicePixelRatio for consistency
-      const devicePixelRatio = 2.0;
+      // For Google Maps, we should use a scale of 1.0 for the bitmap
+      // unless we want to support high-DPI markers specifically.
+      // Scaling by devicePixelRatio often makes markers too large on Web.
+      const scale = 1.0;
       final image = await picture.toImage(
-        (size.width * devicePixelRatio).toInt(),
-        (size.height * devicePixelRatio).toInt(),
+        (size.width * scale).toInt(),
+        (size.height * scale).toInt(),
       );
 
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -166,34 +168,44 @@ class GoogleMapMarkerAdapter extends BaseMarkerAdapter {
   Future<BitmapDescriptor> _loadPngAsset(MarkerConfig config) async {
     try {
       final assetPath = config.pngAssetPath!;
+      Uint8List bytes;
 
-      // For web, ensure the path starts correctly
-      String normalizedPath = assetPath;
-      if (!normalizedPath.startsWith('assets/') && !normalizedPath.startsWith('packages/')) {
-        // Try to access the asset directly
+      // Handle asset path normalization and loading
+      try {
+        final byteData = await rootBundle.load(assetPath);
+        bytes = byteData.buffer.asUint8List();
+      } catch (e) {
         try {
-          final byteData = await rootBundle.load(assetPath);
-          final bytes = byteData.buffer.asUint8List();
-          return BitmapDescriptor.bytes(bytes);
-        } catch (e) {
-          // Try with assets/ prefix
+          final byteData = await rootBundle.load('assets/$assetPath');
+          bytes = byteData.buffer.asUint8List();
+        } catch (e2) {
+          // One more try: check if it's the example project asset path but called from package context
           try {
-            final byteData = await rootBundle.load('assets/$assetPath');
-            final bytes = byteData.buffer.asUint8List();
-            return BitmapDescriptor.bytes(bytes);
-          } catch (e2) {
-            print('Failed to load PNG from $assetPath or assets/$assetPath: $e');
+            final byteData = await rootBundle.load('packages/geo_fence_utils_example/$assetPath');
+            bytes = byteData.buffer.asUint8List();
+          } catch (e3) {
             rethrow;
           }
         }
       }
 
-      final byteData = await rootBundle.load(normalizedPath);
-      final bytes = byteData.buffer.asUint8List();
-      return BitmapDescriptor.bytes(bytes);
+      // Resize the image to match the requested size
+      final ui.Codec codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: config.size.toInt(),
+        targetHeight: config.size.toInt(),
+      );
+      final ui.FrameInfo fi = await codec.getNextFrame();
+      final ui.Image image = fi.image;
+      final ByteData? resizedByteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      
+      if (resizedByteData == null) {
+        return BitmapDescriptor.bytes(bytes);
+      }
+
+      return BitmapDescriptor.bytes(resizedByteData.buffer.asUint8List());
     } catch (e) {
-      print('Error loading PNG asset: $e');
-      // If loading fails, return a fallback marker
+      print('Error loading/resizing PNG asset: $e');
       return await _createFallbackMarker(config);
     }
   }
@@ -225,10 +237,10 @@ class GoogleMapMarkerAdapter extends BaseMarkerAdapter {
     );
 
     final picture = recorder.endRecording();
-    const devicePixelRatio = 2.0;
+    const scale = 1.0;
     final image = await picture.toImage(
-      (size.width * devicePixelRatio).toInt(),
-      (size.height * devicePixelRatio).toInt(),
+      (size.width * scale).toInt(),
+      (size.height * scale).toInt(),
     );
 
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -300,6 +312,7 @@ class GoogleMapMarkerAdapter extends BaseMarkerAdapter {
       infoWindow: config.label != null
           ? InfoWindow(title: config.label)
           : InfoWindow.noText,
+      anchor: Offset(config.anchorX, config.anchorY),
     );
   }
 
@@ -330,6 +343,7 @@ class GoogleMapMarkerAdapter extends BaseMarkerAdapter {
         infoWindow: config.label != null
             ? InfoWindow(title: config.label)
             : InfoWindow.noText,
+        anchor: Offset(config.anchorX, config.anchorY),
       ));
     }
 

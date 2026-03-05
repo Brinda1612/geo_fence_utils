@@ -41,6 +41,8 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
   @override
   void initState() {
     super.initState();
+    // Clear marker cache to ensure fresh rendering during development
+    MarkerCacheManager.clear();
     _initializeExamples();
   }
 
@@ -67,22 +69,6 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
         ),
       ),
 
-      // Circle with PNG flag marker
-      GeoCircleWidget(
-        id: 'circle_png_flag',
-        center: const GeoPoint(latitude: 37.78, longitude: -122.41),
-        radius: 450,
-        color: Colors.green.withOpacity(0.3),
-        borderColor: Colors.green,
-        strokeWidth: 2.0,
-        centerMarker: MarkerConfig(
-          type: MarkerType.pngAsset,
-          color: Colors.transparent,
-          size: 48,
-          pngAssetPath: 'marker pin/flag.png',
-          label: 'Flag',
-        ),
-      ),
 
       // Circle with PNG marker
       GeoCircleWidget(
@@ -217,6 +203,20 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
         width: 4.0,
         capStyle: PolylineCap.round,
         isGeodesic: true,
+        startMarker: MarkerConfig(
+          type: MarkerType.svgCustom,
+          color: Colors.green,
+          size: 32,
+          svgPath: 'M12,2A10,10,0,1,0,22,12,10.011,10.011,0,0,0,12,2Zm0,18a8,8,0,1,1,8-8A8.009,8.009,0,0,1,12,20Z',
+          label: 'Start',
+        ),
+        endMarker: MarkerConfig(
+          type: MarkerType.svgCustom,
+          color: Colors.red,
+          size: 32,
+          svgPath: 'M12,2A10,10,0,1,0,22,12,10.011,10.011,0,0,0,12,2Zm0,18a8,8,0,1,1,8-8A8.009,8.009,0,0,1,12,20Z',
+          label: 'End',
+        ),
       ),
 
       // Preset: Route - with explicit ID
@@ -375,23 +375,7 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
     // MARKER EXAMPLES - Only your uploaded assets
     // ============================================
     _markerExamples = [
-      // PNG Location marker
-      GeoMarkerWidget.pngAsset(
-        id: 'png_location',
-        position: _defaultCenter,
-        pngAssetPath: 'marker pin/location.png',
-        label: 'Location',
-        markerSize: 48,
-      ),
 
-      // PNG Flag marker
-      GeoMarkerWidget.pngAsset(
-        id: 'png_flag',
-        position: const GeoPoint(latitude: 37.78, longitude: -122.41),
-        pngAssetPath: 'marker pin/flag.png',
-        label: 'Flag',
-        markerSize: 48,
-      ),
 
       // PNG Custom marker
       GeoMarkerWidget.pngAsset(
@@ -400,16 +384,6 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
         pngAssetPath: 'marker pin/marker.png',
         label: 'Marker',
         markerSize: 48,
-      ),
-
-      // SVG Location Pin marker
-      GeoMarkerWidget.svgPath(
-        id: 'svg_location_pin',
-        position: const GeoPoint(latitude: 37.79, longitude: -122.43),
-        label: 'Location Pin',
-        color: Colors.red,
-        markerSize: 96,
-        svgPath: 'M29.5,43.6c.33.79,16.25,27.6,18.07,30.66a.5.5,0,0,0,.43.24h0a.48.48,0,0,0,.43-.25L66.5,43.57l0-.07A19.77,19.77,0,0,0,68,36a20,20,0,1,0-38.54,7.49ZM48,17A19,19,0,0,1,67,36a18.8,18.8,0,0,1-1.38,7.09L48,73c-5.16-8.69-17.21-29-17.56-29.78a.76.76,0,0,1,0-.11A19,19,0,0,1,48,17Z M48,46.25A10.25,10.25,0,1,0,37.75,36,10.26,10.26,0,0,0,48,46.25z',
       ),
 
       // SVG Map marker
@@ -435,7 +409,7 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
       ),
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Geo Fence Utils Demo'),
+          title: const Text('Geo Fence Utils Demo ✨ (Updated)'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           actions: [
             IconButton(
@@ -445,13 +419,26 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
             ),
           ],
         ),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth > 900) {
-              return _buildDesktopLayout();
-            }
-            return _buildMobileLayout();
-          },
+        body: Column(
+          children: [
+            Container(
+              color: Colors.white,
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: _buildPageSelector(),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth > 900) {
+                    return _buildDesktopLayout();
+                  }
+                  return _buildMobileLayout();
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -497,73 +484,74 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
   Widget _buildControlPanel() {
     return Container(
       color: Colors.grey.shade100,
-      child: Column(
-        children: [
-          // Page selector - fixed at top
-          Container(
-            color: Colors.grey.shade100,
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: _buildPageSelector(),
-            ),
-          ),
-          // Scrollable content area
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildSelectedPageContent(),
-            ),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: _buildSelectedPageContent(),
       ),
     );
   }
 
+
   Widget _buildPageSelector() {
-    return SegmentedButton<int>(
-      segments: const [
-        ButtonSegment(
-          value: 0,
-          label: Text('Circles'),
-          icon: Icon(Icons.radio_button_unchecked),
-        ),
-        ButtonSegment(
-          value: 1,
-          label: Text('Polygons'),
-          icon: Icon(Icons.change_history),
-        ),
-        ButtonSegment(
-          value: 2,
-          label: Text('Polylines'),
-          icon: Icon(Icons.show_chart),
-        ),
-        ButtonSegment(
-          value: 3,
-          label: Text('Markers'),
-          icon: Icon(Icons.location_on),
-        ),
-        ButtonSegment(
-          value: 4,
-          label: Text('Scenarios'),
-          icon: Icon(Icons.apps),
-        ),
-        ButtonSegment(
-          value: 5,
-          label: Text('Services'),
-          icon: Icon(Icons.code),
-        ),
-      ],
-      selected: {_selectedPage},
-      onSelectionChanged: (Set<int> newSelection) {
-        setState(() {
-          _selectedPage = newSelection.first;
-          _tappedGeofenceId = null;
-          _selectedScenarioIndex = null;
-          _tappedLocation = null;
-          _tappedMarkerId = null; // Clear marker selection
-        });
-      },
+    final pages = [
+      {'label': 'Circles', 'icon': Icons.radio_button_unchecked, 'index': 0},
+      {'label': 'Polygons', 'icon': Icons.change_history, 'index': 1},
+      {'label': 'Polylines', 'icon': Icons.show_chart, 'index': 2},
+      {'label': 'Markers', 'icon': Icons.location_on, 'index': 3},
+      {'label': 'Scenarios', 'icon': Icons.apps, 'index': 4},
+      {'label': 'Services', 'icon': Icons.code, 'index': 5},
+    ];
+
+    return Wrap(
+      spacing: 12.0,
+      runSpacing: 12.0,
+      children: pages.map((page) {
+        final isSelected = _selectedPage == page['index'];
+        return Material(
+          color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _selectedPage = page['index'] as int;
+                _tappedGeofenceId = null;
+                _selectedScenarioIndex = null;
+                _tappedLocation = null;
+                _tappedMarkerId = null;
+              });
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: isSelected ? Colors.deepPurple : Colors.grey.shade300,
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    page['icon'] as IconData,
+                    size: 18,
+                    color: isSelected ? Colors.deepPurple : Colors.grey.shade700,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    page['label'] as String,
+                    style: TextStyle(
+                      color: isSelected ? Colors.deepPurple : Colors.black87,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -744,7 +732,7 @@ GeoCircleWidget.withRadius(
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  circle.metadata?['type'] ?? 'preset',
+                  circle.metadata['type'] ?? 'preset',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -981,42 +969,24 @@ GeoPolylineWidget.route(
         }),
         const SizedBox(height: 16),
         _buildUsageExample('Marker Usage', '''
-// Simple location marker
-GeoMarkerWidget.location(
-  id: 'current_location',
-  position: GeoPoint(latitude: 37.7749, longitude: -122.4194),
-  label: 'Current Location',
-);
+ // PNG Custom marker
+      GeoMarkerWidget.pngAsset(
+        id: 'png_custom',
+        position: const GeoPoint(latitude: 37.76, longitude: -122.42),
+        pngAssetPath: 'marker pin/marker.png',
+        label: 'Marker',
+        markerSize: 48,
+      ),
 
-// Store marker
-GeoMarkerWidget.store(
-  id: 'store',
-  position: GeoPoint(latitude: 37.78, longitude: -122.41),
-  label: 'My Store',
-);
-
-// Checkpoint marker
-GeoMarkerWidget.checkpoint(
-  id: 'checkpoint_1',
-  position: GeoPoint(latitude: 37.77, longitude: -122.40),
-  checkpointNumber: 1,
-);
-
-// Custom marker
-GeoMarkerWidget(
-  id: 'custom',
-  position: GeoPoint(latitude: 37.79, longitude: -122.43),
-  label: 'Custom',
-  markerColor: Colors.teal,
-  markerSize: 40,
-);
-
-// POI marker
-GeoMarkerWidget.poi(
-  id: 'poi',
-  position: GeoPoint(latitude: 37.80, longitude: -122.44),
-  label: 'Point of Interest',
-);
+      // SVG Map marker
+      GeoMarkerWidget.svgPath(
+        id: 'svg_map_marker',
+        position: const GeoPoint(latitude: 37.77, longitude: -122.40),
+        label: 'Map Marker',
+        color: Colors.blue,
+        markerSize: 48,
+        svgPath: 'M9.7685,23.0866C9.7296,23.1333,9.6866,23.1763,9.6399,23.2152C9.2154,23.5686,8.5849,23.511,8.2315,23.0866C2.74384,16.4959,0,11.6798,0,8.63811C0,3.86741,4.2293,0,9,0C13.7707,0,18,3.86741,18,8.63811C18,11.6798,15.2562,16.4959,9.7685,23.0866Z M9,12C10.6569,12,12,10.6569,12,9C12,7.34315,10.6569,6,9,6C7.3431,6,6,7.34315,6,9C6,10.6569,7.3431,12,9,12z',
+      ),
 '''),
       ],
     );
@@ -1030,7 +1000,7 @@ Widget _buildMarkerCard(int index, GeoMarkerWidget marker) {
     margin: const EdgeInsets.only(bottom: 8),
     child: ListTile(
       leading: CircleAvatar(
-        backgroundColor: marker.markerColor,
+        backgroundColor: marker.markerColor ?? Colors.blue,
         child: const Icon(
           Icons.location_on,
           color: Colors.white,
@@ -1045,7 +1015,7 @@ Widget _buildMarkerCard(int index, GeoMarkerWidget marker) {
       ),
       trailing: Chip(
         label: Text(
-          marker.metadata?['type'] ?? 'custom',
+          marker.metadata['type'] ?? 'custom',
           style: const TextStyle(fontSize: 10),
         ),
       ),
@@ -1117,28 +1087,26 @@ Widget _buildMarkerInfoCard() {
   String _getMarkerTitle(int index) {
     switch (index) {
       case 0: return 'Current Location';
-      case 1: return 'Coffee Shop';
-      case 2: return 'Construction Zone';
-      case 3: return 'Hazard Area';
-      case 4: return 'Checkpoint 1';
-      case 5: return 'Checkpoint 2';
-      case 6: return 'Checkpoint 3';
-      case 7: return 'Landmark';
-      case 8: return 'Minimal Dot';
-      case 9: return 'Classic Pin';
-      case 10: return 'Modern Flat';
-      case 11: return 'Circular Avatar';
-      case 12: return 'SVG Star';
-      case 13: return 'SVG Heart';
-      case 14: return 'Restaurant';
-      case 15: return 'Parking';
-      case 16: return 'Gym';
-      case 17: return 'Cafe';
-      case 18: return 'Shopping';
-      case 19: return 'Landmark (Star)';
-      case 20: return 'Hospital';
-      case 21: return 'Hotel';
-      case 22: return 'Custom Marker';
+      case 1: return 'Construction Zone';
+      case 2: return 'Checkpoint 1';
+      case 3: return 'Checkpoint 2';
+      case 4: return 'Checkpoint 3';
+      case 5: return 'Landmark';
+      case 6: return 'Minimal Dot';
+      case 7: return 'Classic Pin';
+      case 8: return 'Modern Flat';
+      case 9: return 'Circular Avatar';
+      case 10: return 'SVG Star';
+      case 11: return 'SVG Heart';
+      case 12: return 'Restaurant';
+      case 13: return 'Parking';
+      case 14: return 'Gym';
+      case 15: return 'Cafe';
+      case 16: return 'Shopping';
+      case 17: return 'Landmark (Star)';
+      case 18: return 'Hospital';
+      case 19: return 'Hotel';
+      case 20: return 'Custom Marker';
       default: return 'Marker ${index + 1}';
     }
   }

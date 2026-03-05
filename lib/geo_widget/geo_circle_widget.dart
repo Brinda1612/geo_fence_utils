@@ -34,9 +34,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
   /// Color of the stroke/border.
   final Color borderColor;
 
-  /// Optional marker to display at the center of the circle.
-  /// Supports both PNG and SVG marker types.
-  final MarkerConfig? centerMarker;
+  // centerMarker is now in base class
 
   /// Creates a new [GeoCircleWidget] with the given properties.
   const GeoCircleWidget({
@@ -46,10 +44,13 @@ class GeoCircleWidget extends GeoGeofenceBase {
     super.color,
     this.strokeWidth = 2.0,
     this.borderColor = const Color(0xFF2196F3),
-    this.centerMarker,
+    super.centerMarker,
     super.isInteractive,
     super.metadata,
   });
+
+  @override
+  GeoPoint get markerPosition => center;
 
   /// Creates a [GeoCircleWidget] with a minimal set of required parameters.
   factory GeoCircleWidget.withRadius({
@@ -161,7 +162,6 @@ class GeoCircleWidget extends GeoGeofenceBase {
       'radius': radius,
       'strokeWidth': strokeWidth,
       'borderColor': borderColor.value,
-      'centerMarker': centerMarker?.toMap(),
     };
   }
 

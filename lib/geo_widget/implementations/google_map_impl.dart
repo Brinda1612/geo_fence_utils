@@ -10,6 +10,8 @@ import '../geo_marker_widget.dart';
 import '../builders/circle_overlay_builder.dart';
 import '../builders/polygon_overlay_builder.dart';
 import '../builders/polyline_overlay_builder.dart';
+import '../../markers/factory/marker_factory.dart';
+import '../../markers/adapters/google_map_marker_adapter.dart';
 
 // Callback type for marker tap
 typedef OnMarkerTap = void Function(String markerId);
@@ -115,18 +117,28 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
   final Set<Polygon> _polygons = {};
   final Set<Polyline> _polylines = {};
   final Set<Marker> _markers = {};
+  bool _isMarkersLoaded = false;
+
+  static final _adapter = GoogleMapMarkerAdapter();
 
   @override
   void initState() {
     super.initState();
-    _buildOverlays();
+    // Load overlays after the frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _buildOverlays();
+      _loadMarkersAsync();
+    });
   }
 
   @override
   void didUpdateWidget(GoogleMapImpl oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.geofences != widget.geofences || oldWidget.markers != widget.markers) {
+    if (oldWidget.geofences != widget.geofences) {
       _buildOverlays();
+    }
+    if (oldWidget.markers != widget.markers) {
+      _loadMarkersAsync();
     }
   }
 
@@ -134,7 +146,6 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
     _circles.clear();
     _polygons.clear();
     _polylines.clear();
-    _markers.clear();
 
     for (final geofence in widget.geofences) {
       if (geofence is GeoCircleWidget) {
@@ -161,34 +172,62 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
       }
     }
 
-    // Build markers
-    for (final marker in widget.markers) {
-      _markers.add(_buildMarker(marker));
+    // Trigger rebuild after overlays are built
+    if (mounted) {
+      setState(() {});
     }
   }
 
-  Marker _buildMarker(GeoMarkerWidget marker) {
-    return Marker(
-      markerId: MarkerId(marker.id),
-      position: marker.position.toGoogleLatLng(),
-      infoWindow: marker.label != null
-          ? InfoWindow(title: marker.label)
-          : InfoWindow.noText,
-      onTap: marker.isInteractive && widget.onMarkerTap != null
-          ? () => widget.onMarkerTap!(marker.id)
-          : null,
-      alpha: marker.alpha,
-      // For custom marker color, we'd need to use custom BitmapDescriptor
-      // For now, using default marker with hue
-      icon: BitmapDescriptor.defaultMarkerWithHue(_getHueFromColor(marker.markerColor)),
-    );
-  }
+  Future<void> _loadMarkersAsync() async {
+    _markers.clear();
+    _isMarkersLoaded = false;
 
-  double _getHueFromColor(Color color) {
-    // Simple conversion from color to hue (0-360)
-    // This is a simplified version - for accurate conversion, more complex math is needed
-    final hsl = HSLColor.fromColor(color);
-    return hsl.hue;
+    // Load regular markers
+    for (final marker in widget.markers) {
+      final config = marker.effectiveConfig;
+      final bitmapDescriptor = await _adapter.buildBitmapDescriptor(config);
+
+      _markers.add(Marker(
+        markerId: MarkerId(marker.id),
+        position: marker.position.toGoogleLatLng(),
+        icon: bitmapDescriptor,
+        onTap: marker.isInteractive && widget.onMarkerTap != null
+            ? () => widget.onMarkerTap!(marker.id)
+            : null,
+        alpha: config.opacity,
+        zIndex: config.zIndex.toDouble(),
+        infoWindow: config.label != null
+            ? InfoWindow(title: config.label)
+            : InfoWindow.noText,
+      ));
+    }
+
+    // Load center markers from circles
+    for (final geofence in widget.geofences) {
+      if (geofence is GeoCircleWidget && geofence.centerMarker != null) {
+        final circleCenterMarkerId = '${geofence.id}_center_marker';
+        final config = geofence.centerMarker!;
+        final bitmapDescriptor = await _adapter.buildBitmapDescriptor(config);
+
+        _markers.add(Marker(
+          markerId: MarkerId(circleCenterMarkerId),
+          position: geofence.center.toGoogleLatLng(),
+          icon: bitmapDescriptor,
+          onTap: geofence.isInteractive && widget.onMarkerTap != null
+              ? () => widget.onMarkerTap!(circleCenterMarkerId)
+              : null,
+          alpha: config.opacity,
+          zIndex: config.zIndex.toDouble(),
+          infoWindow: config.label != null
+              ? InfoWindow(title: config.label)
+              : InfoWindow.noText,
+        ));
+      }
+    }
+
+    setState(() {
+      _isMarkersLoaded = true;
+    });
   }
 
   void _handleMapTap(LatLng latLng) {
@@ -205,28 +244,63 @@ class _GoogleMapImplState extends State<GoogleMapImpl> {
 
   @override
   Widget build(BuildContext context) {
-    return GoogleMap(
-      initialCameraPosition: CameraPosition(
-        target: widget.center.toGoogleLatLng(),
-        zoom: widget.zoom,
-        bearing: widget.rotation,
-      ),
-      circles: _circles,
-      polygons: _polygons,
-      polylines: _polylines,
-      markers: _markers,
-      onTap: _handleMapTap,
-      onLongPress: _handleMapLongPress,
-      zoomControlsEnabled: widget.showZoomControls,
-      compassEnabled: widget.showCompass,
-      myLocationButtonEnabled: widget.showMyLocationButton,
-      minMaxZoomPreference: MinMaxZoomPreference(widget.minZoom, widget.maxZoom),
-      rotateGesturesEnabled: widget.enableRotation,
-      zoomGesturesEnabled: widget.enableZoom,
-      myLocationEnabled: false,
-      mapType: MapType.normal,
-      buildingsEnabled: true,
-      trafficEnabled: false,
+    return Stack(
+      children: [
+        GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: widget.center.toGoogleLatLng(),
+            zoom: widget.zoom,
+            bearing: widget.rotation,
+          ),
+          circles: _circles,
+          polygons: _polygons,
+          polylines: _polylines,
+          markers: _markers,
+          onTap: _handleMapTap,
+          onLongPress: _handleMapLongPress,
+          zoomControlsEnabled: widget.showZoomControls,
+          compassEnabled: widget.showCompass,
+          myLocationButtonEnabled: widget.showMyLocationButton,
+          minMaxZoomPreference: MinMaxZoomPreference(widget.minZoom, widget.maxZoom),
+          rotateGesturesEnabled: widget.enableRotation,
+          zoomGesturesEnabled: widget.enableZoom,
+          myLocationEnabled: false,
+          mapType: MapType.normal,
+          buildingsEnabled: true,
+          trafficEnabled: false,
+        ),
+        if (!_isMarkersLoaded)
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Loading markers...'),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Geo Fence Utils Example">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="geo_fence_utils_example">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>geo_fence_utils_example</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Google Maps JavaScript API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_MAP_API_KEY"></script>
+</head>
+<body>
+  <!-- This script installs service_worker.js to provide PWA functionality. -->
+  <script>
+    var serviceWorkerVersion = null;
+    var scriptLoaded = false;
+    function loadMainDartJs() {
+      if (scriptLoaded) {
+        return;
+      }
+      scriptLoaded = true;
+      var scriptTag = document.createElement('script');
+      scriptTag.src = 'main.dart.js';
+      scriptTag.type = 'application/javascript';
+      document.body.append(scriptTag);
+    }
+
+    if ('serviceWorker' in navigator) {
+      // Service workers are supported. May be refactored to include later.
+      window.addEventListener('load', function () {
+        // Wait for registration to finish before dropping the <script> tag.
+        navigator.serviceWorker.register('flutter_service_worker.js?v=' + serviceWorkerVersion);
+        // When the app is running from a local file system URL (file://), the service worker can't be registered.
+        // However, for development purposes it's okay to ignore this error.
+        navigator.serviceWorker.ready.then(function() {
+          loadMainDartJs();
+        }, function() {
+          loadMainDartJs();
+        });
+      });
+    } else {
+      loadMainDartJs();
+    }
+  </script>
+</body>
+</html>

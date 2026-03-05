@@ -135,6 +135,16 @@ export 'geo_widget/geo_marker_widget.dart';
 export 'geo_widget/map_provider.dart';
 
 // ========================================================================
+// MARKERS - Custom Marker System
+// ========================================================================
+
+/// Advanced marker system with multiple styles and configurations
+///
+/// Provides a flexible, high-performance marker rendering system that works
+/// consistently across both Flutter Map and Google Maps providers.
+export 'markers/markers.dart';
+
+// ========================================================================
 // EXTENSIONS - Utility Extensions
 // ========================================================================
 

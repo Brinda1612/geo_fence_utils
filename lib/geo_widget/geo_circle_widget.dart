@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 import '../models/geo_point.dart';
+import '../markers/models/marker_config.dart';
 import 'geo_geofence_base.dart';
 
 /// A circular geofence widget for display on maps.
@@ -33,6 +34,10 @@ class GeoCircleWidget extends GeoGeofenceBase {
   /// Color of the stroke/border.
   final Color borderColor;
 
+  /// Optional marker to display at the center of the circle.
+  /// Supports both PNG and SVG marker types.
+  final MarkerConfig? centerMarker;
+
   /// Creates a new [GeoCircleWidget] with the given properties.
   const GeoCircleWidget({
     required super.id,
@@ -41,6 +46,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
     super.color,
     this.strokeWidth = 2.0,
     this.borderColor = const Color(0xFF2196F3),
+    this.centerMarker,
     super.isInteractive,
     super.metadata,
   });
@@ -50,11 +56,13 @@ class GeoCircleWidget extends GeoGeofenceBase {
     required GeoPoint center,
     required double radius,
     String? id,
+    MarkerConfig? centerMarker,
   }) {
     return GeoCircleWidget(
       id: id ?? 'circle_${center.latitude}_${center.longitude}_$radius',
       center: center,
       radius: radius,
+      centerMarker: centerMarker,
     );
   }
 
@@ -64,6 +72,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
     required double radius,
     String? id,
     double strokeWidth = 3.0,
+    MarkerConfig? centerMarker,
   }) {
     return GeoCircleWidget(
       id: id ?? 'danger_${center.latitude}_${center.longitude}_$radius',
@@ -72,6 +81,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
       color: const Color(0x33F44336), // Red with 20% opacity
       borderColor: const Color(0xFFF44336), // Solid red
       strokeWidth: strokeWidth,
+      centerMarker: centerMarker,
     );
   }
 
@@ -81,6 +91,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
     required double radius,
     String? id,
     double strokeWidth = 2.0,
+    MarkerConfig? centerMarker,
   }) {
     return GeoCircleWidget(
       id: id ?? 'safe_${center.latitude}_${center.longitude}_$radius',
@@ -89,6 +100,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
       color: const Color(0x334CAF50), // Green with 20% opacity
       borderColor: const Color(0xFF4CAF50), // Solid green
       strokeWidth: strokeWidth,
+      centerMarker: centerMarker,
     );
   }
 
@@ -98,6 +110,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
     required double radius,
     String? id,
     double strokeWidth = 2.5,
+    MarkerConfig? centerMarker,
   }) {
     return GeoCircleWidget(
       id: id ?? 'warning_${center.latitude}_${center.longitude}_$radius',
@@ -106,6 +119,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
       color: const Color(0x33FF9800), // Orange with 20% opacity
       borderColor: const Color(0xFFFF9800), // Solid orange
       strokeWidth: strokeWidth,
+      centerMarker: centerMarker,
     );
   }
 
@@ -115,6 +129,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
     required double radius,
     String? id,
     double strokeWidth = 4.0,
+    MarkerConfig? centerMarker,
   }) {
     return GeoCircleWidget(
       id: id ?? 'nofly_${center.latitude}_${center.longitude}_$radius',
@@ -123,6 +138,7 @@ class GeoCircleWidget extends GeoGeofenceBase {
       color: const Color(0x4DFF0000), // Red with 30% opacity
       borderColor: const Color(0xFFFF0000), // Solid red
       strokeWidth: strokeWidth,
+      centerMarker: centerMarker,
     );
   }
 
@@ -145,12 +161,13 @@ class GeoCircleWidget extends GeoGeofenceBase {
       'radius': radius,
       'strokeWidth': strokeWidth,
       'borderColor': borderColor.value,
+      'centerMarker': centerMarker?.toMap(),
     };
   }
 
   @override
   String toString() =>
-      'GeoCircleWidget(id: $id, center: $center, radius: ${radius.toInt()}m)';
+      'GeoCircleWidget(id: $id, center: $center, radius: ${radius.toInt()}m, centerMarker: $centerMarker)';
 
   @override
   bool operator ==(Object other) =>
@@ -161,7 +178,8 @@ class GeoCircleWidget extends GeoGeofenceBase {
           radius == other.radius &&
           color.value == other.color.value &&
           strokeWidth == other.strokeWidth &&
-          borderColor.value == other.borderColor.value;
+          borderColor.value == other.borderColor.value &&
+          centerMarker == other.centerMarker;
 
   @override
   int get hashCode =>
@@ -170,5 +188,6 @@ class GeoCircleWidget extends GeoGeofenceBase {
       radius.hashCode ^
       color.value.hashCode ^
       strokeWidth.hashCode ^
-      borderColor.value.hashCode;
+      borderColor.value.hashCode ^
+      centerMarker.hashCode;
 }

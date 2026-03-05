@@ -9,3 +9,7 @@ environment:
 dependencies:
   geo_fence_utils:
     path: ../
+
+flutter:
+  assets:
+    - marker pin/

@@ -31,6 +31,7 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
   late final List<GeoGeofenceBase> _polylineExamples;
   late final List<List<GeoGeofenceBase>> _combinedScenes;
   late final List<GeoMarkerWidget> _markerExamples;
+  GeoMarkerWidget? _selectedMarker;
 
   // Status messages
   String? _tappedGeofenceId;
@@ -46,53 +47,85 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
   /// Initialize all static examples demonstrating library features
   void _initializeExamples() {
     // ============================================
-    // CIRCLE EXAMPLES - All preset styles with IDs
+    // CIRCLE EXAMPLES - With PNG and SVG center markers
     // ============================================
     _circleExamples = [
-      // Custom circle with full customization
+      // Circle with PNG location marker
       GeoCircleWidget(
-        id: 'custom_circle',
+        id: 'circle_png_location',
         center: _defaultCenter,
         radius: 500,
+        color: Colors.blue.withOpacity(0.3),
+        borderColor: Colors.blue,
+        strokeWidth: 2.0,
+        centerMarker: MarkerConfig(
+          type: MarkerType.pngAsset,
+          color: Colors.transparent,
+          size: 48,
+          pngAssetPath: 'marker pin/location.png',
+          label: 'Location',
+        ),
+      ),
+
+      // Circle with PNG flag marker
+      GeoCircleWidget(
+        id: 'circle_png_flag',
+        center: const GeoPoint(latitude: 37.78, longitude: -122.41),
+        radius: 450,
+        color: Colors.green.withOpacity(0.3),
+        borderColor: Colors.green,
+        strokeWidth: 2.0,
+        centerMarker: MarkerConfig(
+          type: MarkerType.pngAsset,
+          color: Colors.transparent,
+          size: 48,
+          pngAssetPath: 'marker pin/flag.png',
+          label: 'Flag',
+        ),
+      ),
+
+      // Circle with PNG marker
+      GeoCircleWidget(
+        id: 'circle_png_marker',
+        center: const GeoPoint(latitude: 37.76, longitude: -122.42),
+        radius: 550,
+        color: Colors.orange.withOpacity(0.3),
+        borderColor: Colors.orange,
+        strokeWidth: 2.0,
+      ),
+
+      // Circle with SVG location pin marker
+      GeoCircleWidget(
+        id: 'circle_svg_location_pin',
+        center: const GeoPoint(latitude: 38.7625, longitude: -122.42),
+        radius: 400,
+        color: Colors.red.withOpacity(0.3),
+        borderColor: Colors.red,
+        strokeWidth: 2.0,
+        centerMarker: const MarkerConfig(
+          type: MarkerType.svgCustom,
+          color: Colors.red,
+          size: 48,
+          svgPath: 'M29.5,43.6c.33.79,16.25,27.6,18.07,30.66a.5.5,0,0,0,.43.24h0a.48.48,0,0,0,.43-.25L66.5,43.57l0-.07A19.77,19.77,0,0,0,68,36a20,20,0,1,0-38.54,7.49ZM48,17A19,19,0,0,1,67,36a18.8,18.8,0,0,1-1.38,7.09L48,73c-5.16-8.69-17.21-29-17.56-29.78a.76.76,0,0,1,0-.11A19,19,0,0,1,48,17Z',
+          label: 'Pin',
+        ),
+      ),
+
+      // Circle with SVG map marker
+      GeoCircleWidget(
+        id: 'circle_svg_map_marker',
+        center: const GeoPoint(latitude: 37.75, longitude: -122.41),
+        radius: 600,
         color: Colors.purple.withOpacity(0.3),
         borderColor: Colors.purple,
         strokeWidth: 2.0,
-        metadata: {'type': 'custom', 'purpose': 'demo'},
-      ),
-
-      // Preset: Danger Zone (Red) - with explicit ID
-      GeoCircleWidget.dangerZone(
-        id: 'danger_zone',
-        center: const GeoPoint(latitude: 37.78, longitude: -122.41),
-        radius: 400,
-      ),
-
-      // Preset: Safe Zone (Green) - with explicit ID
-      GeoCircleWidget.safeZone(
-        id: 'safe_zone',
-        center: const GeoPoint(latitude: 37.76, longitude: -122.42),
-        radius: 600,
-      ),
-
-      // Preset: Warning Zone (Orange) - with explicit ID
-      GeoCircleWidget.warningZone(
-        id: 'warning_zone',
-        center: const GeoPoint(latitude: 37.77, longitude: -122.40),
-        radius: 350,
-      ),
-
-      // Preset: No Fly Zone (Dark Red) - with explicit ID
-      GeoCircleWidget.noFlyZone(
-        id: 'no_fly_zone',
-        center: const GeoPoint(latitude: 37.79, longitude: -122.43),
-        radius: 800,
-      ),
-
-      // Using withRadius factory - with explicit ID
-      GeoCircleWidget.withRadius(
-        center: const GeoPoint(latitude: 37.75, longitude: -122.41),
-        radius: 1000,
-        id: 'simple_radius_circle',
+        centerMarker: MarkerConfig(
+          type: MarkerType.svgCustom,
+          color: Colors.purple,
+          size: 48,
+          svgPath: 'M9.7685,23.0866C9.7296,23.1333,9.6866,23.1763,9.6399,23.2152C9.2154,23.5686,8.5849,23.511,8.2315,23.0866C2.74384,16.4959,0,11.6798,0,8.63811C0,3.86741,4.2293,0,9,0C13.7707,0,18,3.86741,18,8.63811C18,11.6798,15.2562,16.4959,9.7685,23.0866Z M9,12C10.6569,12,12,10.6569,12,9C12,7.34315,10.6569,6,9,6C7.3431,6,6,7.34315,6,9C6,10.6569,7.3431,12,9,12z',
+          label: 'Map Marker',
+        ),
       ),
     ];
 
@@ -339,71 +372,54 @@ class _GeoFenceUtilsDemoState extends State<GeoFenceUtilsDemo> {
     ];
 
     // ============================================
-    // MARKER EXAMPLES - All preset styles with IDs
+    // MARKER EXAMPLES - Only your uploaded assets
     // ============================================
     _markerExamples = [
-      // Simple location marker
-      GeoMarkerWidget.location(
-        markerSize: 40,
-        id: 'current_location',
+      // PNG Location marker
+      GeoMarkerWidget.pngAsset(
+        id: 'png_location',
         position: _defaultCenter,
-        label: 'Current Location',
+        pngAssetPath: 'marker pin/location.png',
+        label: 'Location',
+        markerSize: 48,
       ),
 
-      // Store marker
-      GeoMarkerWidget.store(
-        id: 'coffee_shop',
+      // PNG Flag marker
+      GeoMarkerWidget.pngAsset(
+        id: 'png_flag',
         position: const GeoPoint(latitude: 37.78, longitude: -122.41),
-        label: 'Coffee Shop',
+        pngAssetPath: 'marker pin/flag.png',
+        label: 'Flag',
+        markerSize: 48,
       ),
 
-      // Warning marker
-      GeoMarkerWidget.warning(
-        id: 'construction_zone',
+      // PNG Custom marker
+      GeoMarkerWidget.pngAsset(
+        id: 'png_custom',
         position: const GeoPoint(latitude: 37.76, longitude: -122.42),
+        pngAssetPath: 'marker pin/marker.png',
+        label: 'Marker',
+        markerSize: 48,
       ),
 
-      // Danger marker
-      GeoMarkerWidget.danger(
-        id: 'hazard_area',
+      // SVG Location Pin marker
+      GeoMarkerWidget.svgPath(
+        id: 'svg_location_pin',
         position: const GeoPoint(latitude: 37.79, longitude: -122.43),
-        label: 'Hazard',
+        label: 'Location Pin',
+        color: Colors.red,
+        markerSize: 96,
+        svgPath: 'M29.5,43.6c.33.79,16.25,27.6,18.07,30.66a.5.5,0,0,0,.43.24h0a.48.48,0,0,0,.43-.25L66.5,43.57l0-.07A19.77,19.77,0,0,0,68,36a20,20,0,1,0-38.54,7.49ZM48,17A19,19,0,0,1,67,36a18.8,18.8,0,0,1-1.38,7.09L48,73c-5.16-8.69-17.21-29-17.56-29.78a.76.76,0,0,1,0-.11A19,19,0,0,1,48,17Z M48,46.25A10.25,10.25,0,1,0,37.75,36,10.26,10.26,0,0,0,48,46.25z',
       ),
 
-      // Checkpoint markers
-      GeoMarkerWidget.checkpoint(
-        id: 'checkpoint_1',
+      // SVG Map marker
+      GeoMarkerWidget.svgPath(
+        id: 'svg_map_marker',
         position: const GeoPoint(latitude: 37.77, longitude: -122.40),
-        checkpointNumber: 1,
-      ),
-
-      GeoMarkerWidget.checkpoint(
-        id: 'checkpoint_2',
-        position: const GeoPoint(latitude: 37.75, longitude: -122.41),
-        checkpointNumber: 2,
-      ),
-
-      GeoMarkerWidget.checkpoint(
-        id: 'checkpoint_3',
-        position: const GeoPoint(latitude: 37.76, longitude: -122.39),
-        checkpointNumber: 3,
-      ),
-
-      // POI marker
-      GeoMarkerWidget.poi(
-        id: 'landmark',
-        position: const GeoPoint(latitude: 37.7849, longitude: -122.4194),
-        label: 'Landmark',
-      ),
-
-      // Custom marker
-      const GeoMarkerWidget(
-        id: 'custom_marker',
-        position: GeoPoint(latitude: 37.82, longitude: -122.38),
-        label: 'Custom',
-        markerColor: Colors.teal,
-        markerSize: 60,
-        labelColor: Colors.white,
+        label: 'Map Marker',
+        color: Colors.blue,
+        markerSize: 48,
+        svgPath: 'M9.7685,23.0866C9.7296,23.1333,9.6866,23.1763,9.6399,23.2152C9.2154,23.5686,8.5849,23.511,8.2315,23.0866C2.74384,16.4959,0,11.6798,0,8.63811C0,3.86741,4.2293,0,9,0C13.7707,0,18,3.86741,18,8.63811C18,11.6798,15.2562,16.4959,9.7685,23.0866Z M9,12C10.6569,12,12,10.6569,12,9C12,7.34315,10.6569,6,9,6C7.3431,6,6,7.34315,6,9C6,10.6569,7.3431,12,9,12z',
       ),
     ];
   }
@@ -1006,28 +1022,97 @@ GeoMarkerWidget.poi(
     );
   }
 
-  Widget _buildMarkerCard(int index, GeoMarkerWidget marker) {
-    final isSelected = _tappedMarkerId == marker.id;
-    return Card(
-      color: isSelected ? Colors.orange.shade50 : null,
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: marker.markerColor,
-          child: Icon(Icons.location_on, color: Colors.white, size: 20),
+Widget _buildMarkerCard(int index, GeoMarkerWidget marker) {
+  final isSelected = _tappedMarkerId == marker.id;
+
+  return Card(
+    color: isSelected ? Colors.orange.shade50 : null,
+    margin: const EdgeInsets.only(bottom: 8),
+    child: ListTile(
+      leading: CircleAvatar(
+        backgroundColor: marker.markerColor,
+        child: const Icon(
+          Icons.location_on,
+          color: Colors.white,
+          size: 20,
         ),
-        title: Text(_getMarkerTitle(index)),
-        subtitle: Text(
-          'Position: ${marker.position.latitude.toStringAsFixed(4)}, ${marker.position.longitude.toStringAsFixed(4)}\n'
-          '${marker.label != null ? 'Label: ${marker.label}' : 'No label'}',
-        ),
-        trailing: Chip(
-          label: Text(marker.metadata['type'] ?? 'custom', style: const TextStyle(fontSize: 10)),
-        ),
-        onTap: () => setState(() => _tappedMarkerId = marker.id),
       ),
-    );
-  }
+      title: Text(_getMarkerTitle(index)),
+      subtitle: Text(
+        'Position: ${marker.position.latitude.toStringAsFixed(4)}, '
+        '${marker.position.longitude.toStringAsFixed(4)}\n'
+        '${marker.label != null ? 'Label: ${marker.label}' : 'No label'}',
+      ),
+      trailing: Chip(
+        label: Text(
+          marker.metadata?['type'] ?? 'custom',
+          style: const TextStyle(fontSize: 10),
+        ),
+      ),
+      onTap: () => setState(() => _tappedMarkerId = marker.id),
+    ),
+  );
+}
+
+
+
+Widget _buildMarkerInfoCard() {
+  final marker = _selectedMarker!;
+
+  return Card(
+    elevation: 6,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: marker.markerColor,
+            child: const Icon(Icons.location_on, color: Colors.white),
+          ),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  marker.label ?? "Marker",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                Text(
+                  "${marker.position.latitude.toStringAsFixed(4)}, "
+                  "${marker.position.longitude.toStringAsFixed(4)}",
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () {
+              setState(() {
+                _selectedMarker = null;
+              });
+            },
+          )
+        ],
+      ),
+    ),
+  );
+}
+
 
   String _getMarkerTitle(int index) {
     switch (index) {
@@ -1039,7 +1124,21 @@ GeoMarkerWidget.poi(
       case 5: return 'Checkpoint 2';
       case 6: return 'Checkpoint 3';
       case 7: return 'Landmark';
-      case 8: return 'Custom Marker';
+      case 8: return 'Minimal Dot';
+      case 9: return 'Classic Pin';
+      case 10: return 'Modern Flat';
+      case 11: return 'Circular Avatar';
+      case 12: return 'SVG Star';
+      case 13: return 'SVG Heart';
+      case 14: return 'Restaurant';
+      case 15: return 'Parking';
+      case 16: return 'Gym';
+      case 17: return 'Cafe';
+      case 18: return 'Shopping';
+      case 19: return 'Landmark (Star)';
+      case 20: return 'Hospital';
+      case 21: return 'Hotel';
+      case 22: return 'Custom Marker';
       default: return 'Marker ${index + 1}';
     }
   }
@@ -1312,15 +1411,13 @@ GeoGeofenceMap(
         children: [
           _buildSelectedMap(),
           // Fix #7: Limit width and position to avoid overlap
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 250, // Leave space for zoom controls
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 350),
-              child: _buildMapStatusCard(),
+          if (_selectedMarker != null)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              right: 20,
+              child: _buildMarkerInfoCard(),
             ),
-          ),
         ],
       ),
     );
@@ -1370,7 +1467,9 @@ GeoGeofenceMap(
         center: _defaultCenter,
         zoom: _defaultZoom,
         geofences: geofences,
-        provider: MapProvider.flutterMap,
+        // provider: MapProvider.flutterMap,
+        provider: MapProvider.googleMap,
+        googleMapsApiKey: "GOOGLE_MAP_API_KEY",
         showZoomControls: true,
         showCompass: false, // Disabled for cleaner UI
         showMyLocationButton: false, // Disabled as location may not be available
@@ -1395,15 +1494,20 @@ GeoGeofenceMap(
         center: _defaultCenter,
         zoom: _defaultZoom,
         markers: markers,
-        provider: MapProvider.flutterMap,
+        provider: MapProvider.googleMap,
+        googleMapsApiKey: "GOOGLE_MAP_API_KEY",
         showZoomControls: true,
         showCompass: false,
         showMyLocationButton: false,
         enableRotation: false,
         enableZoom: true,
         onMarkerTap: (id) {
-          setState(() => _tappedMarkerId = id);
-          _showSnackBar('Tapped marker: $id');
+          final marker = _markerExamples.firstWhere((m) => m.id == id);
+
+          setState(() {
+            _tappedMarkerId = id;
+            _selectedMarker = marker;
+          });
         },
         onMapTap: (location) {
           setState(() {

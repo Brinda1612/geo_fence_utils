@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -18,6 +17,10 @@ import '../geo_marker_widget.dart';
 import '../builders/circle_overlay_builder.dart';
 import '../builders/polygon_overlay_builder.dart';
 import '../builders/polyline_overlay_builder.dart';
+import '../../markers/factory/marker_factory.dart';
+import '../../markers/adapters/flutter_map_marker_adapter.dart';
+import '../../markers/models/marker_config.dart';
+import '../../markers/widgets/marker_info_window.dart';
 
 // Callback type for marker tap
 typedef OnMarkerTap = void Function(String markerId);
@@ -116,6 +119,10 @@ class FlutterMapImpl extends StatefulWidget {
 class _FlutterMapImplState extends State<FlutterMapImpl> {
   late MapController _mapController;
   double _currentZoom = 13.0;
+  String? _selectedMarkerId;
+  GeoPoint? _selectedMarkerPosition;
+  MarkerConfig? _selectedMarkerConfig;
+  MapCamera? _currentCamera;
 
   @override
   void initState() {
@@ -133,21 +140,14 @@ class _FlutterMapImplState extends State<FlutterMapImpl> {
   void _handleMapTap(TapPosition tapPosition, LatLng latLng) {
     final tappedPoint = latLng.toGeoPoint();
 
-    // Check markers first (they have priority)
-    const markerTapThreshold = 0.001; // Approx 100m threshold for marker tap
-    for (final marker in widget.markers) {
-      if (marker.isInteractive) {
-        final distance = GeoDistanceService.calculateDistance(
-          tappedPoint,
-          marker.position,
-        );
-        if (distance < markerTapThreshold) {
-          if (widget.onMarkerTap != null) {
-            widget.onMarkerTap!(marker.id);
-          }
-          return;
-        }
-      }
+    // Clear info window if tapping elsewhere on the map
+    // (but not on a marker - markers handle their own taps)
+    if (_selectedMarkerId != null) {
+      setState(() {
+        _selectedMarkerId = null;
+        _selectedMarkerPosition = null;
+        _selectedMarkerConfig = null;
+      });
     }
 
     // Check circles
@@ -194,9 +194,27 @@ class _FlutterMapImplState extends State<FlutterMapImpl> {
       }
     }
 
-    // If no geofence or marker was tapped, call onMapTap
+    // If no geofence was tapped, call onMapTap
     if (widget.onMapTap != null) {
       widget.onMapTap!(tappedPoint);
+    }
+  }
+
+  /// Handle marker tap directly
+  void _handleMarkerTap(String markerId) {
+    final marker = widget.markers.firstWhere(
+      (m) => m.id == markerId,
+      orElse: () => throw StateError('Marker not found: $markerId'),
+    );
+
+    setState(() {
+      _selectedMarkerId = markerId;
+      _selectedMarkerPosition = marker.position;
+      _selectedMarkerConfig = marker.effectiveConfig;
+    });
+
+    if (widget.onMarkerTap != null) {
+      widget.onMarkerTap!(markerId);
     }
   }
 
@@ -249,16 +267,18 @@ class _FlutterMapImplState extends State<FlutterMapImpl> {
   }
 
   void _zoomIn() {
+    final center = _currentCamera?.center ?? _mapController.camera.center;
     setState(() {
       _currentZoom = (_currentZoom + 1).clamp(widget.minZoom, widget.maxZoom);
-      _mapController.move(_mapController.camera.center, _currentZoom);
+      _mapController.move(center, _currentZoom);
     });
   }
 
   void _zoomOut() {
+    final center = _currentCamera?.center ?? _mapController.camera.center;
     setState(() {
       _currentZoom = (_currentZoom - 1).clamp(widget.minZoom, widget.maxZoom);
-      _mapController.move(_mapController.camera.center, _currentZoom);
+      _mapController.move(center, _currentZoom);
     });
   }
 
@@ -280,6 +300,14 @@ class _FlutterMapImplState extends State<FlutterMapImpl> {
               ),
               onTap: _handleMapTap,
               onLongPress: _handleMapLongPress,
+              onMapEvent: (MapEvent event) {
+                // Update camera tracking when map moves/zooms
+                if (event is MapEventWithMove) {
+                  setState(() {
+                    _currentCamera = event.camera;
+                  });
+                }
+              },
             ),
             children: [
               TileLayer(
@@ -320,6 +348,24 @@ class _FlutterMapImplState extends State<FlutterMapImpl> {
                   onPressed: _zoomOut,
                 ),
               ],
+            ),
+          ),
+        // Info window overlay
+        if (_selectedMarkerId != null &&
+            _selectedMarkerPosition != null &&
+            _selectedMarkerConfig != null)
+          SizedBox.expand(
+            child: _MarkerInfoWindowPositioner(
+              markerPosition: _selectedMarkerPosition!,
+              markerConfig: _selectedMarkerConfig!,
+              mapController: _mapController,
+              onClose: () {
+                setState(() {
+                  _selectedMarkerId = null;
+                  _selectedMarkerPosition = null;
+                  _selectedMarkerConfig = null;
+                });
+              },
             ),
           ),
       ],
@@ -373,62 +419,64 @@ class _FlutterMapImplState extends State<FlutterMapImpl> {
 
   List<Marker> _buildMarkerOverlays() {
     final markers = <Marker>[];
+    final adapter = FlutterMapMarkerAdapter();
+
+    // Add regular markers
     for (final marker in widget.markers) {
-      markers.add(_buildMarker(marker));
+      final config = marker.effectiveConfig;
+      markers.add(adapter.createMapMarker(
+        id: marker.id,
+        position: marker.position,
+        config: config,
+        onTap: marker.isInteractive
+            ? () => _handleMarkerTap(marker.id)
+            : null,
+      ));
     }
+
+    // Add center markers from circles
+    for (final geofence in widget.geofences) {
+      if (geofence is GeoCircleWidget && geofence.centerMarker != null) {
+        final circleCenterMarkerId = '${geofence.id}_center_marker';
+        final marker = GeoMarkerWidget(
+          id: circleCenterMarkerId,
+          position: geofence.center,
+          config: geofence.centerMarker!,
+          isInteractive: geofence.isInteractive,
+        );
+
+        markers.add(adapter.createMapMarker(
+          id: marker.id,
+          position: marker.position,
+          config: marker.effectiveConfig,
+          onTap: geofence.isInteractive
+              ? () => _handleCenterMarkerTap(geofence.id, circleCenterMarkerId)
+              : null,
+        ));
+      }
+    }
+
     return markers;
   }
 
-  Marker _buildMarker(GeoMarkerWidget marker) {
-    // Build marker widget with pin shape
-    return Marker(
-      point: marker.position.toFlutterLatLng(),
-      width: marker.markerSize + 20, // Extra space for label
-      height: marker.markerSize + 20,
-      child: GestureDetector(
-        onTap: marker.isInteractive && widget.onMarkerTap != null
-            ? () => widget.onMarkerTap!(marker.id)
-            : null,
-        child: Opacity(
-          opacity: marker.alpha,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Label (if present)
-              if (marker.label != null && marker.label!.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: marker.showInfoWindow
-                        ? Colors.white
-                        : marker.markerColor.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: marker.strokeColor, width: 1),
-                  ),
-                  child: Text(
-                    marker.label!,
-                    style: TextStyle(
-                      color: marker.showInfoWindow ? Colors.black : marker.labelColor,
-                      fontSize: marker.labelFontSize,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 4),
-              // Marker pin
-              CustomPaint(
-                size: Size(marker.markerSize, marker.markerSize),
-                painter: _MarkerPainter(
-                  color: marker.markerColor,
-                  strokeColor: marker.strokeColor,
-                  strokeWidth: marker.strokeWidth,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  /// Handle center marker tap
+  void _handleCenterMarkerTap(String circleId, String markerId) {
+    setState(() {
+      _selectedMarkerId = markerId;
+      // Find the circle to get its center marker config
+      final circle = widget.geofences.firstWhere(
+        (g) => g.id == circleId,
+        orElse: () => throw StateError('Circle not found: $circleId'),
+      );
+      if (circle is GeoCircleWidget && circle.centerMarker != null) {
+        _selectedMarkerPosition = circle.center;
+        _selectedMarkerConfig = circle.centerMarker;
+      }
+    });
+
+    if (widget.onMarkerTap != null) {
+      widget.onMarkerTap!(markerId);
+    }
   }
 }
 
@@ -474,66 +522,75 @@ class _ZoomIconButton extends StatelessWidget {
   }
 }
 
-/// Custom painter for drawing map markers.
-class _MarkerPainter extends CustomPainter {
-  final Color color;
-  final Color strokeColor;
-  final double strokeWidth;
+/// Widget that positions the info window at the correct screen coordinates
+class _MarkerInfoWindowPositioner extends StatelessWidget {
+  final GeoPoint markerPosition;
+  final MarkerConfig markerConfig;
+  final MapController mapController;
+  final VoidCallback onClose;
 
-  const _MarkerPainter({
-    required this.color,
-    required this.strokeColor,
-    this.strokeWidth = 2.0,
+  const _MarkerInfoWindowPositioner({
+    required this.markerPosition,
+    required this.markerConfig,
+    required this.mapController,
+    required this.onClose,
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
+  Widget build(BuildContext context) {
+    // Use LayoutBuilder to get the screen constraints, then position
+    // the info window at the correct location using a CustomSingleChildLayout
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Get the current camera to convert lat/long to screen coordinates
+        final camera = mapController.camera;
+        final markerLatLng = LatLng(markerPosition.latitude, markerPosition.longitude);
 
-    // Draw pin shape (teardrop)
-    final path = ui.Path();
+        // Calculate screen position using the camera's projection
+        final screenPoint = _project(camera, markerLatLng, constraints.biggest);
 
-    // Outer circle of the pin
-    path.addOval(Rect.fromCircle(
-      center: Offset(center.dx, center.dy - radius * 0.2),
-      radius: radius * 0.5,
-    ));
-
-    // Pointy bottom
-    path.moveTo(center.dx - radius * 0.5, center.dy - radius * 0.2);
-    path.lineTo(center.dx, size.height);
-    path.lineTo(center.dx + radius * 0.5, center.dy - radius * 0.2);
-    path.close();
-
-    // Fill with marker color
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(path, paint);
-
-    // Draw white center circle
-    final innerCirclePaint = Paint()
-      ..color = strokeColor
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(
-      Offset(center.dx, center.dy - radius * 0.2),
-      radius * 0.2,
-      innerCirclePaint,
+        // Use a Stack to properly position the info window
+        return Stack(
+          children: [
+            Positioned(
+              left: screenPoint.dx - 75, // Center horizontally (info window is ~150px wide)
+              top: screenPoint.dy - 55, // Position above the marker
+              child: MarkerInfoWindow(
+                title: markerConfig.label ?? 'Marker',
+                snippet: _getMarkerSnippet(),
+                onClose: onClose,
+              ),
+            ),
+          ],
+        );
+      },
     );
-
-    // Draw border
-    final borderPaint = Paint()
-      ..color = strokeColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-    canvas.drawPath(path, borderPaint);
   }
 
-  @override
-  bool shouldRepaint(covariant _MarkerPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.strokeColor != strokeColor ||
-        oldDelegate.strokeWidth != strokeWidth;
+  /// Convert LatLng to screen coordinates
+  Offset _project(MapCamera camera, LatLng point, Size screenSize) {
+    // This is a simplified projection calculation
+    // For accurate results, you would use the map's internal projection
+    // flutter_map provides the camera's center and zoom level
+
+    final center = camera.center;
+    final zoom = camera.zoom;
+
+    // Calculate the offset from center in pixels
+    final latDiff = point.latitude - center.latitude;
+    final lngDiff = point.longitude - center.longitude;
+
+    // Approximate conversion to pixels (at zoom level 13, 1 degree ~ 100km)
+    final pixelsPerDegree = (256 * math.pow(2, zoom)) / 360;
+    final x = screenSize.width / 2 + lngDiff * pixelsPerDegree;
+    final y = screenSize.height / 2 - latDiff * pixelsPerDegree;
+
+    return Offset(x, y);
+  }
+
+  String _getMarkerSnippet() {
+    return 'Lat: ${markerPosition.latitude.toStringAsFixed(4)}, '
+           'Lng: ${markerPosition.longitude.toStringAsFixed(4)}';
   }
 }
+
